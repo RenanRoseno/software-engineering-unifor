@@ -1,0 +1,264 @@
+openapi: 3.0.3
+info:
+  title: Blood Donor and Patient Registry API
+  version: 1.0.0
+  description: Contract for donor registration, patient intake, blood test requests, and audit operations.
+servers:
+  - url: https://api.example-hospital.local/v1
+paths:
+  /donors:
+    get:
+      summary: List donors
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: bloodType
+          schema: { type: string }
+        - in: query
+          name: centerId
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: donor list
+    post:
+      summary: Create donor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DonorCreateRequest'
+      responses:
+        '201':
+          description: donor created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DonorResponse'
+  /donors/{donorId}:
+    get:
+      summary: Get donor
+      parameters:
+        - in: path
+          name: donorId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: donor record
+    put:
+      summary: Update donor
+      parameters:
+        - in: path
+          name: donorId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DonorUpdateRequest'
+      responses:
+        '200':
+          description: donor updated
+  /patients:
+    get:
+      summary: List patients
+      responses:
+        '200':
+          description: patient list
+    post:
+      summary: Create patient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientCreateRequest'
+      responses:
+        '201':
+          description: patient created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientResponse'
+  /patients/{patientId}/test-requests:
+    get:
+      summary: List patient test requests
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: request list
+    post:
+      summary: Create blood test request
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestRequestCreateRequest'
+      responses:
+        '201':
+          description: request created
+  /test-requests/{testRequestId}:
+    get:
+      summary: Get test request
+      parameters:
+        - in: path
+          name: testRequestId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: test request
+    patch:
+      summary: Update test request status
+      parameters:
+        - in: path
+          name: testRequestId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestRequestStatusUpdate'
+      responses:
+        '200':
+          description: test request updated
+  /audit-logs:
+    get:
+      summary: Query audit log
+      parameters:
+        - in: query
+          name: entityType
+          schema: { type: string }
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: audit log entries
+components:
+  schemas:
+    DonorCreateRequest:
+      type: object
+      required:
+        - firstName
+        - lastName
+        - dateOfBirth
+        - bloodType
+        - rhFactor
+        - phoneNumber
+        - consentStatus
+        - eligibilityStatus
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        dateOfBirth: { type: string, format: date }
+        sex: { type: string }
+        bloodType: { type: string, enum: [A, B, AB, O] }
+        rhFactor: { type: string, enum: [+, -] }
+        phoneNumber: { type: string }
+        email: { type: string, format: email, nullable: true }
+        addressLine1: { type: string }
+        city: { type: string }
+        stateProvince: { type: string, nullable: true }
+        country: { type: string }
+        consentStatus: { type: string, enum: [granted, pending, revoked] }
+        eligibilityStatus: { type: string, enum: [eligible, deferred, ineligible] }
+        contraindicationFlags: { type: array, items: { type: string } }
+    DonorResponse:
+      type: object
+      properties:
+        donorId: { type: string, format: uuid }
+        status: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        bloodType: { type: string }
+        rhFactor: { type: string }
+        createdAt: { type: string, format: date-time }
+    DonorUpdateRequest:
+      type: object
+      properties:
+        eligibilityStatus: { type: string }
+        consentStatus: { type: string }
+        status: { type: string }
+        phoneNumber: { type: string }
+        contraindicationFlags: { type: array, items: { type: string } }
+    PatientCreateRequest:
+      type: object
+      required:
+        - hospitalNumber
+        - firstName
+        - lastName
+        - dateOfBirth
+        - urgencyLevel
+      properties:
+        hospitalNumber: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        dateOfBirth: { type: string, format: date }
+        sex: { type: string }
+        phoneNumber: { type: string, nullable: true }
+        attendingClinicianId: { type: string, format: uuid }
+        urgencyLevel: { type: string, enum: [routine, urgent, emergency] }
+        clinicalNotes: { type: string, nullable: true }
+    PatientResponse:
+      type: object
+      properties:
+        patientId: { type: string, format: uuid }
+        hospitalNumber: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        urgencyLevel: { type: string }
+        status: { type: string }
+    TestRequestCreateRequest:
+      type: object
+      required:
+        - orderedTests
+        - urgencyLevel
+        - requestingClinicianId
+      properties:
+        orderedTests:
+          type: array
+          items:
+            type: string
+        urgencyLevel: { type: string, enum: [routine, urgent, emergency] }
+        requestingClinicianId: { type: string, format: uuid }
+        collectionCenterId: { type: string, format: uuid }
+        requestedDate: { type: string, format: date-time }
+        clinicalContext: { type: string, nullable: true }
+    TestRequestStatusUpdate:
+      type: object
+      required:
+        - status
+      properties:
+        status: { type: string, enum: [pending, active, in_progress, completed, cancelled, archived] }
+        justification: { type: string, nullable: true }
+    AuditEntry:
+      type: object
+      properties:
+        auditId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        actionType: { type: string }
+        entityType: { type: string }
+        entityId: { type: string, format: uuid }
+        outcome: { type: string }
+        createdAt: { type: string, format: date-time }

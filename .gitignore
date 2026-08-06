@@ -1,0 +1,39 @@
+# Operating system
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Java / Gradle
+**/.gradle/
+**/build/
+**/out/
+**/target/
+*.class
+*.log
+
+# Docker / local env
+.env
+.env.*
+!.env.example
+
+# Terraform
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfvars
+**/*.tfvars.json
+
+# Redis / caches
+*.rdb
+*.aof
+
+# Temporary files
+*.tmp
+*.swp
+*.bak

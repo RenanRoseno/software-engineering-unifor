@@ -1,0 +1,13 @@
+**/.git
+**/.gradle
+**/build
+**/out
+**/target
+**/node_modules
+**/.idea
+**/.vscode
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+**/*.tmp

@@ -1,0 +1,13 @@
+rootProject.name = 'blood-registry-backend'
+
+include(
+    'shared:common-lib',
+    'shared:contracts',
+    'shared:security-lib',
+    'services:donor-service',
+    'services:patient-service',
+    'services:test-request-service',
+    'services:audit-service',
+    'services:notification-service',
+    'services:identity-gateway'
+)
