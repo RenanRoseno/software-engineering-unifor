@@ -6,9 +6,17 @@
 
 ## Summary
 
-This feature implements a secure, auditable blood donor and patient registry for a hospital collection center. The system must reliably support donor onboarding, patient intake, blood test request creation, status tracking, duplicate detection, role-based access, and operational reporting while preserving patient privacy and clinical traceability.
+This feature implements a secure, auditable donor onboarding registry for a hospital collection center. The MVP must reliably support donor registration, eligibility review, status tracking, duplicate detection, role-based access, and operational reporting while preserving donor privacy and clinical traceability. Patient intake and blood-test request workflows are deferred to a future phase.
 
 The selected architecture is a Java 21, Spring Boot 3.x microservice ecosystem backed by PostgreSQL, Redis caching, RabbitMQ messaging, and AWS-hosted container orchestration. The design emphasizes transactional integrity for medical records, asynchronous processing for non-critical workflows, and high availability through multi-AZ infrastructure, health checks, autoscaling, and observability.
+
+## MVP Scope Decisions
+
+- MVP scope: donor onboarding only; patient intake and blood-test request workflows are out of scope for this release.
+- Donor lifecycle states for the MVP: draft -> pending-review -> active -> inactive/deactivated.
+- Urgent overrides require approval from a licensed medical officer/physician and full audit logging with reason and reviewer identity.
+- Privacy and retention: personal data is restricted to authorized roles, retained for 5 years, and then anonymized.
+- Initial deployment target: AWS ECS/Fargate with RDS PostgreSQL and ElastiCache Redis.
 
 ## Technical Context
 
@@ -20,7 +28,7 @@ The selected architecture is a Java 21, Spring Boot 3.x microservice ecosystem b
 
 **Testing**: JUnit 5, Mockito, Spring Boot Test, Testcontainers, Contract tests, integration tests, k6 or Gatling for performance validation, Postman/Newman CLI for API verification
 
-**Target Platform**: AWS (EKS preferred; ECS Fargate acceptable), Linux containers, ALB, RDS, ElastiCache, S3, CloudWatch, IAM, Secrets Manager, ACM
+**Target Platform**: AWS ECS/Fargate, Linux containers, ALB, RDS PostgreSQL, ElastiCache Redis, S3, CloudWatch, IAM, Secrets Manager, ACM
 
 **Project Type**: Web service API; microservice-based healthcare workflow platform
 
@@ -102,33 +110,31 @@ backend/
 
 ### Service boundaries
 
-1. Donor Service
+1. Donor Service (MVP)
    - Owns donor lifecycle, identity attributes, consent and eligibility validation, and duplicate detection.
    - Exposes CRUD APIs for donor registration and status updates.
    - Writes donor events to the message bus for downstream notifications, reporting, and audit processing.
 
-2. Patient Service
-   - Owns patient identity and clinical context for intake workflows.
-   - Handles patient search, duplicate checks, and patient status transitions.
-   - Publishes patient-created and patient-updated events.
-
-3. Test Request Service
-   - Owns blood test requests, urgency prioritization, linking to patient records, and status management.
-   - Validates request transitions and triggers collection workflows.
-   - Emits events for lab workflow and notification updates.
-
-4. Audit Service
+2. Audit Service (MVP)
    - Append-only immutable event store for writes, reads, access denials, and operational changes.
    - Provides secure query APIs for administrators, auditors, and privacy reviewers.
-   - Consumes domain events from all services and writes to PostgreSQL in a separate, auditable write path.
+   - Consumes domain events from the donor service and writes to PostgreSQL in a separate, auditable write path.
 
-5. Notification Service
-   - Sends email/SMS or internal alerts for urgent requests, status updates, and approval actions.
-   - Uses RabbitMQ to avoid blocking the original registration requests.
-
-6. Identity / Access Gateway
+3. Identity / Access Gateway (MVP)
    - Handles authentication, authorization, session management, and RBAC enforcement.
    - Integrates with OIDC/OAuth2 providers and may delegate to AWS Cognito or an internal IdP for the first release.
+
+4. Patient Service (deferred to phase 2)
+   - Planned for later implementation once donor onboarding is stable.
+   - Will own patient identity and clinical context for intake workflows.
+
+5. Test Request Service (deferred to phase 2)
+   - Planned for later implementation once patient intake is in scope.
+   - Will own blood test requests, urgency prioritization, and request status management.
+
+6. Notification Service (deferred to phase 2)
+   - Planned for later implementation once the broader workflow is in scope.
+   - Will send email/SMS or internal alerts for workflow and approval actions.
 
 ### Shared data responsibilities
 
@@ -143,7 +149,7 @@ The detailed entity model is in `/specs/001-blood-donor-registry/data-model.md`.
 Key implementation rules:
 - All domain transactions must validate required fields before moving to active state.
 - Duplicate detection should be rule-based with a confidence score and explicit confirm/merge workflow.
-- Status transitions must use an allowed-states matrix and be enforced by domain validators.
+- MVP status transitions must use the donor lifecycle draft -> pending-review -> active -> inactive/deactivated and be enforced by domain validators.
 - All create/update/delete/denial actions must emit audit events.
 - Deletion is replaced by deactivation/archive; soft delete is the default operational pattern.
 
@@ -208,11 +214,11 @@ The API contract is defined in `/specs/001-blood-donor-registry/contracts/blood-
 ### AWS deployment model
 
 - Application Load Balancer in front of multiple service replicas
-- EKS or ECS Fargate cluster for Spring Boot services
+- AWS ECS/Fargate cluster for Spring Boot services
 - RDS PostgreSQL with Multi-AZ failover and read replicas for reporting workloads
 - ElastiCache Redis cluster to serve caches and hot lookups
 - S3 bucket for bulk export and operational snapshots
-- SQS or RabbitMQ cluster with message persistence and queue durability
+- RabbitMQ with message persistence and queue durability
 - AWS Secrets Manager for database credentials, auth secrets, and API keys
 - CloudWatch / Prometheus + Grafana for metrics, logs, and dashboards
 - Route 53 or AWS internal DNS for service discovery and traffic routing
@@ -220,18 +226,18 @@ The API contract is defined in `/specs/001-blood-donor-registry/contracts/blood-
 ### Container strategy
 
 - Build immutable Docker images for every service
-- Use Kubernetes Deployments or ECS task definitions with rolling updates
+- Use ECS task definitions with rolling updates
 - Define separate readiness and liveness probes for safe startup and self-healing
 - Keep service state stateless; all critical state in PostgreSQL/Redis/RabbitMQ
-- Use horizontal pod autoscaling or ECS autoscaling with CPU and memory thresholds
+- Use ECS autoscaling with CPU and memory thresholds
 
 ### HA and load balancing
 
 - Run multiple replicas per service in at least two availability zones
-- Use ALB or NLB for ingress, TLS termination, and health-based routing
+- Use ALB for ingress, TLS termination, and health-based routing
 - Keep database in multi-AZ with automatic failover
 - Use Redis replication and failover for hot-path caches
-- Use per-service autoscaling rules to maintain response under peak load
+- Use per-service ECS autoscaling rules to maintain response under peak load
 
 ## Observability and Monitoring
 

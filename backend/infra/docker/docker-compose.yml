@@ -39,6 +39,83 @@ services:
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
 
+  donor-service:
+    build:
+      context: ../..
+      dockerfile: backend/services/donor-service/Dockerfile
+    container_name: blood-registry-donor-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    environment:
+      SERVER_PORT: 8081
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-blood_registry}
+      DB_USERNAME: ${POSTGRES_USER:-registry_app}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "8081:8081"
+
+  audit-service:
+    build:
+      context: ../..
+      dockerfile: backend/services/audit-service/Dockerfile
+    container_name: blood-registry-audit-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    environment:
+      SERVER_PORT: 8084
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-blood_registry}
+      DB_USERNAME: ${POSTGRES_USER:-registry_app}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "8084:8084"
+
+  identity-gateway:
+    build:
+      context: ../..
+      dockerfile: backend/services/identity-gateway/Dockerfile
+    container_name: blood-registry-identity-gateway
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8090
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-blood_registry}
+      DB_USERNAME: ${POSTGRES_USER:-registry_app}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      JWT_ISSUER_URI: ${JWT_ISSUER_URI:-http://host.docker.internal:8080/realms/blood-registry}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-blood-registry-client}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-change_me}
+    ports:
+      - "8090:8090"
+
   prometheus:
     image: prom/prometheus:v2.53.1
     container_name: blood-registry-prometheus
