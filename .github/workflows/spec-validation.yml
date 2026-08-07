@@ -1,0 +1,56 @@
+name: spec-validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate-spec-change:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check whether spec.md changed
+        id: check-spec
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const { owner, repo } = context.repo;
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner,
+              repo,
+              pull_number: prNumber,
+            });
+
+            const specChanged = files.some((file) => file.filename === 'spec.md' || file.filename.endsWith('/spec.md'));
+            core.setOutput('spec_changed', specChanged.toString());
+
+            if (specChanged) {
+              core.info('A especificação foi modificada. A CI detectou a alteração com sucesso.');
+            } else {
+              core.info('spec.md não foi alterado neste pull request.');
+            }
+
+      - name: Comment on PR when spec.md changed
+        if: steps.check-spec.outputs.spec_changed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const { owner, repo } = context.repo;
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: prNumber,
+              body: 'A especificação foi modificada. A CI detectou a alteração com sucesso.'
+            });
+
+      - name: Log when spec.md did not change
+        if: steps.check-spec.outputs.spec_changed != 'true'
+        run: echo "spec.md não foi alterado neste pull request."
