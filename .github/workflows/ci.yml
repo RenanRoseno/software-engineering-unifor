@@ -7,6 +7,9 @@ on:
   pull_request:
 
 jobs:
+  check-sdd-patterns:
+    build:
+      uses: .github/workflows/spec-validation.yml
   build-and-test:
     runs-on: ubuntu-latest
     defaults:
