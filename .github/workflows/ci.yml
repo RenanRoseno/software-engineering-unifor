@@ -8,8 +8,8 @@
 
   jobs:
     check-sdd-patterns:
-      uses: .github/workflows/spec-validation.yml
-    
+      uses: ./.github/workflows/spec-validation.yml
+
     build-and-test:
       runs-on: ubuntu-latest
       defaults:
