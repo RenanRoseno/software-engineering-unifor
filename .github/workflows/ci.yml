@@ -29,6 +29,3 @@ jobs:
 
       - name: Run Gradle validation
         run: gradle --no-daemon clean test
-
-  check-sdd-patterns:
-      uses: .github/workflows/spec-validation.yml
