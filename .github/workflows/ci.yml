@@ -7,25 +7,27 @@ on:
   pull_request:
 
 jobs:
-  check-sdd-patterns:
-    uses: ./.github/workflows/spec-validation.yml
-
   build-and-test:
     runs-on: ubuntu-latest
-
     defaults:
       run:
         working-directory: backend
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
           cache: gradle
 
-      - uses: gradle/actions/setup-gradle@v3
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
 
-      - run: gradle --no-daemon clean test
+      - name: Run Gradle validation
+        run: gradle --no-daemon clean test
+  check-sdd-patterns:
+      uses: .github/workflows/spec-validation.yml
